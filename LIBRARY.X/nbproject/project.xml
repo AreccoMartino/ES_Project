@@ -3,18 +3,16 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>Project_Group_8</name>
-            <creation-uuid>7fc65121-3b99-4062-939a-5a8827899784</creation-uuid>
+            <name>LIBRARY</name>
+            <creation-uuid>44312fc2-f536-45d8-9433-14b377a6ed9b</creation-uuid>
             <make-project-type>0</make-project-type>
             <sourceEncoding>ISO-8859-1</sourceEncoding>
-            <make-dep-projects>
-                <make-dep-project>../LIBRARY.X</make-dep-project>
-            </make-dep-projects>
+            <make-dep-projects/>
             <sourceRootList/>
             <confList>
                 <confElem>
                     <name>default</name>
-                    <type>2</type>
+                    <type>3</type>
                 </confElem>
             </confList>
             <formatting>
