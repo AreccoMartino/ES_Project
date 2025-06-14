@@ -28,36 +28,26 @@
 
 // This is a guard condition so that contents of this file are not included
 // more than once.  
-#ifndef GENERAL_PURPOSE_LIB_H
-#define	GENERAL_PURPOSE_LIB_H
+#ifndef ADC_LIB_H
+#define	ADC_LIB_H
 
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 // TODO Insert appropriate #include <>
-#include <stdlib.h>
-#include "general_purpose_lib.h"
-#include "timer_lib.h"
-#include "spi_lib.h"
-#include "pwm_lib.h"
+
+#include "config.h"
 
 // TODO Insert C++ class definitions if appropriate
 
 // TODO Insert declarations
-typedef struct {
-    volatile unsigned int head;    // index for reading
-    volatile unsigned int tail;    // index for writing
-    volatile unsigned int count;   // number of bytes currently stored
-    unsigned int size;             // total capacity of the buffer
-    volatile char *buffer;         // pointer to the actual data array
-} volatile CircularBuffer;
 
-typedef struct {
-    int x[BUF_AVG_SAMPLES];
-    int y[BUF_AVG_SAMPLES];
-    int z[BUF_AVG_SAMPLES];
-    int index;                      // Next insertion index
-    int count;                      // Number of samples stored (max BUF_AVG_SAMPLES)
-} DataBuffer;
+void adc1_init(void);
+void adc2_init(void);
+
+// We use this function to manually trigger the start of the sampling of the battery
+static inline void adc2_start_sampling(void) {
+    AD2CON1bits.SAMP = 1;  
+}
 
 // Comment a function and leverage automatic documentation with slash star star
 /**
@@ -80,44 +70,8 @@ typedef struct {
 
     <p><b>Remarks:</b></p>
  */
-
 // TODO Insert declarations or function prototypes (right here) to leverage 
 // live documentation
-
-int Buffer_Init(volatile CircularBuffer* cb, volatile char* buf_ptr, unsigned int size);
-int Buffer_Write(volatile CircularBuffer* cb, char data);
-int Buffer_Read(volatile CircularBuffer* cb, char* data_ptr);
-void DataBuffer_Init(DataBuffer* mb);
-void DataBuffer_Write(DataBuffer* mb, int x, int y, int z);
-void DataBuffer_Average(DataBuffer* mb, int* avg_x, int* avg_y, int* avg_z);
-void set_digital_mode(void);
-void leds_init(void);
-void buttons_init(void);
-void lights_init(void);
-void global_interrupt_enable(void);
-void algorithm(void);
-void mag_sus2act(void);
-void mag_read_axes(int* axes_ptr);
-void mag_update_readings(DataBuffer* mb);
-void acc_read_axes(int* axes_ptr);
-void acc_update_readings(DataBuffer* mb);
-// void move_forward(void);
-// void move_backward(void);
-// void rotate_right(void);
-// void rotate_left(void);
-// void turn_right_forward(void);
-// void turn_left_forward(void);
-// void turn_right_backward(void);
-// void turn_left_backward(void);
-
-
-static inline float ir_compute_cm(float v_ir) {
-    return 2.34f
-         - 4.74f  * v_ir
-         + 4.06f  * v_ir * v_ir
-         - 1.60f  * v_ir * v_ir * v_ir
-         + 0.24f  * v_ir * v_ir * v_ir * v_ir;
-}
 
 #ifdef	__cplusplus
 extern "C" {
@@ -130,5 +84,5 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif	/* GENERAL_PURPOSE_LIB_H */
+#endif	/* ADC_LIB_H */
 

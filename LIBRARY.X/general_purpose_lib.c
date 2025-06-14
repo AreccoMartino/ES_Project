@@ -41,24 +41,24 @@ int Buffer_Read(volatile CircularBuffer* cb, char* data_ptr) {
     return 0;
 }
 
-void MagDataBuffer_Init(MagDataBuffer* mb) {
+void DataBuffer_Init(DataBuffer* mb) {
     mb->index = 0;
     mb->count = 0;
-    for (int i = 0; i < MAG_AVG_SAMPLES; i++) {
+    for (int i = 0; i < BUF_AVG_SAMPLES; i++) {
         mb->x[i] = mb->y[i] = mb->z[i] = 0;
     }
 }
 
-void MagDataBuffer_Write(MagDataBuffer* mb, int x, int y, int z) {
+void DataBuffer_Write(DataBuffer* mb, int x, int y, int z) {
     mb->x[mb->index] = x;
     mb->y[mb->index] = y;
     mb->z[mb->index] = z;
-    mb->index = (mb->index + 1) % MAG_AVG_SAMPLES;
-    if(mb->count < MAG_AVG_SAMPLES)
+    mb->index = (mb->index + 1) % BUF_AVG_SAMPLES;
+    if(mb->count < BUF_AVG_SAMPLES)
         mb->count++;
 }
 
-void MagDataBuffer_Average(MagDataBuffer* mb, int* avg_x, int* avg_y, int* avg_z) {
+void DataBuffer_Average(DataBuffer* mb, int* avg_x, int* avg_y, int* avg_z) {
     long sum_x = 0, sum_y = 0, sum_z = 0;
     for (int i = 0; i < mb->count; i++) {
         sum_x += mb->x[i];
@@ -142,67 +142,97 @@ void mag_read_axes(int* axes_ptr) {
     axes_ptr[2] = (int)(((int)raw_data[5] << 8) | (raw_data[4] & 0b11111110)) / 2;
 }
 
-void mag_update_readings(MagDataBuffer* mb) {
+void mag_update_readings(DataBuffer* mb) {
     // This function calls mag_read_axes(), and then adds the new readings into the averaging buffer.
     int raw_axes[3];
     // Read raw axes
     mag_read_axes(raw_axes);  
     // Update MagDataBuffer pointed to by mb with the new measurements
-    MagDataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
+    DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
 }
 
-void move_forward(void) {
-    oc1_set_duty(0);
-    oc2_set_duty(100);
-    oc3_set_duty(0);
-    oc4_set_duty(100);
+void acc_read_axes(int* axes_ptr) {
+    
+    unsigned char raw_data[6]; // Buffer for raw data 
+    // Read raw data
+    CS_ACC = 0; 
+    spi_read_address(0x02, raw_data, 6);
+    CS_ACC = 1; 
+    // NB: The acc data is 12-bit, so we changed the mask for the LSB and we need to shift by 4 bits instead of 3 (division by 16 instead of 8)
+    axes_ptr[0] = (int)(((int)raw_data[1] << 8) | (raw_data[0] & 0b11110000)) / 16;
+    axes_ptr[1] = (int)(((int)raw_data[3] << 8) | (raw_data[2] & 0b11110000)) / 16;
+    axes_ptr[2] = (int)(((int)raw_data[5] << 8) | (raw_data[4] & 0b11110000)) / 16;     
 }
 
-void move_backward(void) {
-    oc1_set_duty(100);
-    oc2_set_duty(0);
-    oc3_set_duty(100);
-    oc4_set_duty(0);
+void acc_update_readings(DataBuffer* mb) {
+    // This function calls mag_read_axes(), and then adds the new readings into the averaging buffer.
+    int raw_axes[3];
+    // Read raw axes
+    acc_read_axes(raw_axes);  
+    // Update MagDataBuffer pointed to by mb with the new measurements
+    DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
 }
 
-void rotate_right(void) {
-    oc1_set_duty(0);
-    oc2_set_duty(100);
-    oc3_set_duty(100);
-    oc4_set_duty(0);
-}
 
-void rotate_left(void) {
-    oc1_set_duty(100);
-    oc2_set_duty(0);
-    oc3_set_duty(0);
-    oc4_set_duty(100);
-}
 
-void turn_right_forward(void) {
-    oc1_set_duty(0);
-    oc2_set_duty(100);
-    oc3_set_duty(0);
-    oc4_set_duty(70);
-}
 
-void turn_left_forward(void) {
-    oc1_set_duty(0);
-    oc2_set_duty(70);
-    oc3_set_duty(0);
-    oc4_set_duty(100);
-}
 
-void turn_right_backward(void) {
-    oc1_set_duty(100);
-    oc2_set_duty(0);
-    oc3_set_duty(70);
-    oc4_set_duty(0);
-}
 
-void turn_left_backward(void) {
-    oc1_set_duty(70);
-    oc2_set_duty(0);
-    oc3_set_duty(100);
-    oc4_set_duty(0);
-}
+
+// void move_forward(void) {
+//     oc1_set_duty(0);
+//     oc2_set_duty(100);
+//     oc3_set_duty(0);
+//     oc4_set_duty(100);
+// }
+
+// void move_backward(void) {
+//     oc1_set_duty(100);
+//     oc2_set_duty(0);
+//     oc3_set_duty(100);
+//     oc4_set_duty(0);
+// }
+
+// void rotate_right(void) {
+//     oc1_set_duty(0);
+//     oc2_set_duty(100);
+//     oc3_set_duty(100);
+//     oc4_set_duty(0);
+// }
+
+// void rotate_left(void) {
+//     oc1_set_duty(100);
+//     oc2_set_duty(0);
+//     oc3_set_duty(0);
+//     oc4_set_duty(100);
+// }
+
+// void turn_right_forward(void) {
+//     oc1_set_duty(0);
+//     oc2_set_duty(100);
+//     oc3_set_duty(0);
+//     oc4_set_duty(70);
+// }
+
+// void turn_left_forward(void) {
+//     oc1_set_duty(0);
+//     oc2_set_duty(70);
+//     oc3_set_duty(0);
+//     oc4_set_duty(100);
+// }
+
+// void turn_right_backward(void) {
+//     oc1_set_duty(100);
+//     oc2_set_duty(0);
+//     oc3_set_duty(70);
+//     oc4_set_duty(0);
+// }
+
+// void turn_left_backward(void) {
+//     oc1_set_duty(70);
+//     oc2_set_duty(0);
+//     oc3_set_duty(100);
+//     oc4_set_duty(0);
+// }
+
+

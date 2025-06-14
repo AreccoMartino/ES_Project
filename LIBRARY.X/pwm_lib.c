@@ -68,76 +68,219 @@ void oc_pins_init(void) {
 
 
 
+// //???????????????????????????????????????????????????????
+// // DIFFERENTIAL-DRIVE MIXER
+// // Reuses your oc?_set_duty() functions by passing them as arguments
+
+// #define MIN_DUTY    40    // minimum percent that moves the motor
+// #define MAX_DUTY   100
+
+// // clamp x to [lo..hi]
+// static inline int clamp(int x, int lo, int hi) {
+//     if (x < lo) return lo;
+//     if (x > hi) return hi;
+//     return x;
+// }
+
+// // convert a speed command in -100..+100 to a duty cycle (0 or 40..100)
+// static inline unsigned int cmd_to_duty(int cmd) {
+//     if (cmd == 0) return 0;  // stop
+//     return MIN_DUTY + (unsigned int)(abs(cmd) * (MAX_DUTY - MIN_DUTY)) / 100u;
+// }
+
+// // set one side of the buggy: cmd>0 -> forward, cmd<0 -> backward
+// // oc_backward and oc_forward are your existing functions
+// static void set_side(int cmd,
+//                      void (*oc_backward)(unsigned int),
+//                      void (*oc_forward )(unsigned int))
+// {
+//     unsigned int d = cmd_to_duty(cmd);
+//     if (cmd > 0) {
+//         oc_forward(d);      // calls e.g. oc2_set_duty(d)
+//         oc_backward(0);     // calls e.g. oc1_set_duty(0)
+//     } else if (cmd < 0) {
+//         oc_forward(0);
+//         oc_backward(d);
+//     } else {
+//         oc_forward(0);
+//         oc_backward(0);
+//     }
+// }
+
+// // MASTER MIXER FUNCTION
+// // speed  ? [-100..+100]: positive -> forward
+// // yawrate ? [-100..+100]: positive -> left turn (CCW)
+// void drive_set(int speed, int yawrate)
+// {
+//     // compute differential commands
+//     int left_cmd  = clamp(speed - yawrate, -100, 100);
+//     int right_cmd = clamp(speed + yawrate, -100, 100);
+
+//     // apply:
+//     // left side uses OC1=backward, OC2=forward
+//     // here we *reuse* your functions by passing them in:
+//     set_side(left_cmd,
+//              oc1_set_duty,  // backward
+//              oc2_set_duty); // forward
+
+//     // right side uses OC3=backward, OC4=forward
+//     set_side(right_cmd,
+//              oc3_set_duty,
+//              oc4_set_duty);
+// }
 
 
 
 
 
 
+// OVUHEOFHOEIHCVNEV
+
+void set_motor_speeds(int speed, int yawrate) {
+
+    int left_motor_power;
+    int right_motor_power;
+
+    // --- 1. Input Validation ---
+    if (speed > 100) speed = 100;
+    if (speed < -100) speed = -100;
+    if (yawrate > 100) yawrate = 100;
+    if (yawrate < -100) yawrate = -100;
+
+    // --- 2. Mixing Logic ---
+    left_motor_power = speed - yawrate/2;
+    right_motor_power = speed + yawrate/2;
 
 
+    if (speed > 0) {
+        if (left_motor_power > 100) left_motor_power = 100;
+        if (left_motor_power < 0) left_motor_power = 1;   
+        if (right_motor_power > 100) right_motor_power = 100;
+        if (right_motor_power < 0) right_motor_power = 1;
+    }
+    else if (speed < 0) {
+        if (left_motor_power < -100) left_motor_power = -100;
+        if (left_motor_power > 0) left_motor_power = -1;   
+        if (right_motor_power < -100) right_motor_power = -100;
+        if (right_motor_power > 0) right_motor_power = -1;
+    } else {
+        left_motor_power = -yawrate;
+        right_motor_power = yawrate;
+    }
+       
+
+    // --- 3. Map Power to Duty Cycle & Determine Direction ---
+    
+    unsigned int oc1_duty = 0, oc2_duty = 0, oc3_duty = 0, oc4_duty = 0;
+    unsigned int left_dc = 0, right_dc = 0;
+
+    // --- Process Left Side ---
+    if (left_motor_power != 0) {
+        // Get the command magnitude (1 to 100)
+        int abs_power = abs(left_motor_power);
+        
+        // Map power [1-100] to duty cycle [MIN_DUTY_CYCLE - 100]
+        // This integer math formula does the linear mapping:
+        // DC = start_of_range + (portion_of_input_range * output_range_size)
+        left_dc = MIN_DUTY_CYCLE + (unsigned int)(abs_power * (100 - MIN_DUTY_CYCLE)) / 100;
+
+        // Apply to correct pin based on direction
+        if (left_motor_power > 0) {
+            oc2_duty = left_dc; // Left Forward (+)
+        } else {
+            oc1_duty = left_dc; // Left Backward (-)
+        }
+    }
+
+    // --- Process Right Side ---
+    if (right_motor_power != 0) {
+        // Get the command magnitude (1 to 100)
+        int abs_power = abs(right_motor_power);
+        
+        // Map power [1-100] to duty cycle [MIN_DUTY_CYCLE - 100]
+        right_dc = MIN_DUTY_CYCLE + (unsigned int)(abs_power * (100 - MIN_DUTY_CYCLE)) / 100;
+        
+        // Apply to correct pin based on direction
+        if (right_motor_power > 0) {
+            oc4_duty = right_dc; // Right Forward (+)
+        } else {
+            oc3_duty = right_dc; // Right Backward (-)
+        }
+    }
+
+    // --- 5. Apply Final Duty Cycles to Peripherals ---
+    oc1_set_duty(oc1_duty);
+    oc2_set_duty(oc2_duty);
+    oc3_set_duty(oc3_duty);
+    oc4_set_duty(oc4_duty);
+}
 
 
+// void set_motor_speeds(int speed, int yawrate) {
+//     int left_motor_power;
+//     int right_motor_power;
 
+//     // --- 1. Input Validation ---
+//     if (speed > 100) speed = 100;
+//     if (speed < -100) speed = -100;
+//     if (yawrate > 100) yawrate = 100;
+//     if (yawrate < -100) yawrate = -100;
 
+//     // --- 2. Two-Mode Mixing Logic ---
+//     if (speed == 0) {
+//         // MODE 1: Rotate in place (Tank Turn)
+//         // yawrate > 0 is CCW (Left), so right wheel fwd, left wheel bwd.
+//         // yawrate < 0 is CW (Right), so left wheel fwd, right wheel bwd.
+//         left_motor_power = -yawrate;
+//         right_motor_power = yawrate;
+//     } else {
+//         // MODE 2: Arcing Turn (Consistent across forward/backward)
+//         if (yawrate > 0) { // (CCW)
+//             // Left wheel is inside, so it's slower.
+//             left_motor_power = (speed * (100 - yawrate)) / 100;
+//             // Right wheel is outside, so it gets full speed.
+//             right_motor_power = speed;
+//         } else if (yawrate < 0) { // (CW)
+//             // Left wheel is outside, so it gets full speed.
+//             left_motor_power = speed;
+//             // Right wheel is inside, so it's slower. Use abs() for clarity.
+//             right_motor_power = (speed * (100 - abs(yawrate))) / 100;
+//         } else { // Moving straight (yawrate is 0)
+//             left_motor_power = speed;
+//             right_motor_power = speed;
+//         }
+//     }
 
+//     // --- 3. Saturation / Clamping ---
+//     // This section is now less critical for MODE 2 but still vital for MODE 1.
+//     if (left_motor_power > 100) left_motor_power = 100;
+//     if (left_motor_power < -100) left_motor_power = -100;
+//     if (right_motor_power > 100) right_motor_power = 100;
+//     if (right_motor_power < -100) right_motor_power = -100;
 
+//     // --- 4. Map Power to Duty Cycle & Determine Direction ---
+//     // This section remains the same as it correctly handles positive/negative power
+//     unsigned int oc1_duty = 0, oc2_duty = 0, oc3_duty = 0, oc4_duty = 0;
 
+//     // Process Left Side
+//     if (left_motor_power != 0) {
+//         int abs_power = abs(left_motor_power);
+//         unsigned int left_dc = MIN_DUTY_CYCLE + (unsigned int)(abs_power * (100 - MIN_DUTY_CYCLE)) / 100;
+//         if (left_motor_power > 0) oc2_duty = left_dc; // Left Forward (+)
+//         else oc1_duty = left_dc; // Left Backward (-)
+//     }
 
+//     // Process Right Side
+//     if (right_motor_power != 0) {
+//         int abs_power = abs(right_motor_power);
+//         unsigned int right_dc = MIN_DUTY_CYCLE + (unsigned int)(abs_power * (100 - MIN_DUTY_CYCLE)) / 100;
+//         if (right_motor_power > 0) oc4_duty = right_dc; // Right Forward (+)
+//         else oc3_duty = right_dc; // Right Backward (-)
+//     }
 
-
-
-
-//void setupPWM() {
-//    OC1CON1bits.OCTSEL = 0b111; // Select system clock
-//    OC1CON1bits.OCM = 0b110;    // Edge-aligned PWM mode
-//    OC1CON2bits.SYNCSEL = 0x1F; // Internal sync  (11111 in binary)
-//
-//    OC1RS = PWM_PERIOD; // Set PWM period
-//    OC1R = PWM_DUTY;    // Set initial duty
-//}
-//
-//void startPWM() {
-//    OC1CON1bits.OCM = 0b110; 
-//}
-//
-//void stopPWM() {
-//    OC1CON1bits.OCM = 0b000; 
-//}
-//
-//
-//void setupPWM_OC1_OC2() {
-//    // Remapping OC1 ? RP7 (motore sinistro avanti)
-//    //RPOR3bits.RP7R = 18; // 18 = OC1
-//    RPOR3bits.RP70R = 18;
-//    TRISBbits.TRISB7 = 0;
-//
-//    // Remapping OC2 ? RP8 (motore destro avanti)
-//    //RPOR4bits.RP8R = 19; // 19 = OC2
-//    RPOR4bits.RP80R = 19;
-//    TRISBbits.TRISB8 = 0;
-//
-//    // Configura OC1 (sinistra)
-//    OC1CON1bits.OCTSEL = 0b111; // System clock
-//    OC1CON2bits.SYNCSEL = 0x1F;
-//    OC1RS = PWM_PERIOD;
-//    OC1R = PWM_DUTY;
-//    OC1CON1bits.OCM = 0b110;
-//
-//    // Configura OC2 (destra)
-//    OC2CON1bits.OCTSEL = 0b111; // System clock
-//    OC2CON2bits.SYNCSEL = 0x1F;
-//    OC2RS = PWM_PERIOD;
-//    OC2R = PWM_DUTY;
-//    OC2CON1bits.OCM = 0b110;
-//
-//    // Disattiva backward (motori indietro)
-//    LATBbits.LATB2 = 0;  // sinistra indietro
-//    TRISBbits.TRISB2 = 0;
-//
-//    LATBbits.LATB4 = 0;  // destra indietro
-//    TRISBbits.TRISB4 = 0;
-//}
-
-
-
+//     // --- 5. Apply Final Duty Cycles to Peripherals ---
+//     oc1_set_duty(oc1_duty);
+//     oc2_set_duty(oc2_duty);
+//     oc3_set_duty(oc3_duty);
+//     oc4_set_duty(oc4_duty);
+// }

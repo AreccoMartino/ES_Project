@@ -43,6 +43,11 @@
 #define FCY 72000000UL      // Instruction cycle frequency
 #define MAX_DELAY 233       // Max int value to not overflow 16-bit timer register
 
+// STATES
+#define WAIT_FOR_START 0
+#define MOVING 1
+#define EMERGENCY 2
+
 // TIMERS
 #define TIMER1 1
 #define TIMER2 2
@@ -92,7 +97,7 @@
 #define LEDFRONT LATAbits.LATA7
 
 // MAGNETOMETER
-#define MAG_AVG_SAMPLES 5
+#define BUF_AVG_SAMPLES 5
 
 // PWM OC
 #define PWMA LATDbits.LATD1 
@@ -101,6 +106,7 @@
 #define PWMD LATDbits.LATD4 
 #define PWM_FREQ 10000UL
 #define PWM_PERIOD_TICKS (FCY/PWM_FREQ)
+#define MIN_DUTY_CYCLE 40  
 
 // Comment a function and leverage automatic documentation with slash star star
 /**

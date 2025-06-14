@@ -32,6 +32,7 @@
 #define	PWM_LIB_H
 
 #include <xc.h> // include processor files - each processor file is guarded. 
+#include <stdlib.h>
 
 // TODO Insert appropriate #include <>
 #include "config.h"
@@ -72,6 +73,8 @@ void oc2_set_duty(unsigned int duty_percent);
 void oc3_set_duty(unsigned int duty_percent);
 void oc4_set_duty(unsigned int duty_percent);
 void oc_pins_init(void);
+void set_motor_speeds(int speed, int yawrate);
+// void drive_set(int speed, int yawrate);
 
 #ifdef	__cplusplus
 extern "C" {
