@@ -108,6 +108,8 @@
 #define PWM_PERIOD_TICKS (FCY/PWM_FREQ)
 #define MIN_DUTY_CYCLE 40  
 
+
+
 // Comment a function and leverage automatic documentation with slash star star
 /**
     <p><b>Function prototype:</b></p>

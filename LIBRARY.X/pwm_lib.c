@@ -2,6 +2,7 @@
 #include "pwm_lib.h"
 
 
+
 void oc_init(void) {
     OC1CON1bits.OCTSEL = 7;     // Use internal clock (FCY))
     OC2CON1bits.OCTSEL = 7;
@@ -138,6 +139,8 @@ void oc_pins_init(void) {
 
 void set_motor_speeds(int speed, int yawrate) {
 
+    //const int MIN_DUTY_CYCLE = 40; // Minimum duty cycle for the motors
+
     int left_motor_power;
     int right_motor_power;
 
@@ -213,6 +216,8 @@ void set_motor_speeds(int speed, int yawrate) {
     oc2_set_duty(oc2_duty);
     oc3_set_duty(oc3_duty);
     oc4_set_duty(oc4_duty);
+
+    return right_dc;
 }
 
 

@@ -17,12 +17,19 @@ volatile CircularBuffer rxBuffer;
 volatile char tx_buffer_array[TX_BUFFER_SIZE];
 volatile CircularBuffer txBuffer;
 
+DataBuffer accBuffer;
+
 unsigned int missed_rx_bytes = 0;
 unsigned int missed_tx_bytes = 0;
 
 // Global variables for latest sensor readings
 volatile float latest_ir_cm   = 0.0f;
 volatile float latest_batt_v  = 0.0f;
+
+
+// Global variables for debug (to remove later)
+//unsigned int motor = 0;
+
 
 
 void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {
@@ -107,6 +114,9 @@ int main(void) {
     char rx_byte; 
     int count_battery = 0; 
     int count_ir = 0;
+    unsigned int count_acc_read = 0;
+
+    //int count_speed = 0;
 
     // Initialize circular buffers
     Buffer_Init(&rxBuffer, rx_buffer_array, RX_BUFFER_SIZE);        // Initialize RX buffer
@@ -192,6 +202,36 @@ int main(void) {
                 break;
         }
 
+
+
+        if (++count_acc_read % 10 == 0) {
+            acc_update_readings(&accBuffer);
+            if (count_acc_read == 50) {
+                count_acc_read = 0;
+                int avg_x, avg_y, avg_z;
+                DataBuffer_Average(&accBuffer, &avg_x, &avg_y, &avg_z);  
+
+                // Conversione in m/s^2
+                float ax = avg_x * 0.00961;
+                float ay = avg_y * 0.00961;
+                float az = avg_z * 0.00961;
+
+                char msg[50];
+                sprintf(msg, "$MACC,%.2f,%.2f,%.2f*\n", ax, ay, az);
+                uart_send_string(&txBuffer, msg);
+            }
+        }
+
+
+
+
+          
+
+
+
+
+
+
         // Handle LED1 blinking at 1 Hz
         if (++count_led >= 250) {
             count_led = 0;
@@ -218,6 +258,15 @@ int main(void) {
             uart_send_string(&txBuffer, msg);
         }
 
+        // if (++count_speed >= 500) {
+        //     count_speed = 0;
+        //     char msg[50];
+        //     sprintf(msg, "Speed: %u\n", motor);
+        //     uart_send_string(&txBuffer, msg);
+        // }
+        
+        
+        
 
 
 

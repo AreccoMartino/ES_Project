@@ -151,6 +151,13 @@ void mag_update_readings(DataBuffer* mb) {
     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
 }
 
+void acc_mode_filtered(){
+    // This function set the acc. sensor in filtered mode with 31.25Hz bandwidth (a sample every 16ms)
+    CS_ACC = 0;
+    spi_write_address(0x10, 0b00001010);
+    CS_ACC = 1;
+}
+
 void acc_read_axes(int* axes_ptr) {
     
     unsigned char raw_data[6]; // Buffer for raw data 
