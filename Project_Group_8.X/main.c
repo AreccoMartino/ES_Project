@@ -10,26 +10,17 @@
 #include "../LIBRARY.X/pwm_lib.h"
 #include "../LIBRARY.X/adc_lib.h"
 
-int STATE = WAIT_FOR_START; // Initial state of the system
 
+int STATE = WAIT_FOR_START;
+// unsigned int missed_rx_bytes = 0;
+// unsigned int missed_tx_bytes = 0;
 volatile char rx_buffer_array[RX_BUFFER_SIZE];
 volatile CircularBuffer rxBuffer;
 volatile char tx_buffer_array[TX_BUFFER_SIZE];
 volatile CircularBuffer txBuffer;
-
 DataBuffer accBuffer;
-
-unsigned int missed_rx_bytes = 0;
-unsigned int missed_tx_bytes = 0;
-
-// Global variables for latest sensor readings
-volatile float latest_ir_cm   = 0.0f;
+volatile float ir_volt = 0.0f;
 volatile float latest_batt_v  = 0.0f;
-
-
-// Global variables for debug (to remove later)
-//unsigned int motor = 0;
-
 
 
 void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {
@@ -43,12 +34,11 @@ void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {
         if (Buffer_Write(&rxBuffer, received_byte) == -1) {
             // If the rxBuffer is full, the received_byte is lost, so we could ...
             // ... increase a counter to keep track of how many bytes we lost
-            missed_rx_bytes ++;
+            // missed_rx_bytes ++;
         }
         // As soon as there is no more data available in the FIFO we exit the loop and the ISR
     }
 }
-
 
 void __attribute__((__interrupt__, no_auto_psv)) _U1TXInterrupt(void) {
     
@@ -67,15 +57,14 @@ void __attribute__((__interrupt__, no_auto_psv)) _U1TXInterrupt(void) {
     }
 }
 
-
 void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt() {
-    IFS1bits.INT1IF = 0;        // Reset INT1 interrupt flag
+    IFS1bits.INT1IF = 0;        
     IEC0bits.T2IE = 1;
     tmr_setup_period(TIMER2, 10);
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt() {
-    IFS0bits.T2IF = 0;        // Reset INT1 interrupt flag
+    IFS0bits.T2IF = 0;      
     IEC0bits.T2IE = 0;
     T2CONbits.TON = 0;
     IEC1bits.INT1IE = 1;
@@ -86,21 +75,19 @@ void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt() {
         } else if (STATE == MOVING) {
             STATE = WAIT_FOR_START;
         } 
-    }
-    
+    }   
 }
 
 void __attribute__((__interrupt__, no_auto_psv)) _AD1Interrupt(void) {
     IFS0bits.AD1IF = 0;
     int raw = ADC1BUF0;
-    float v_ir = (float)raw / 4095.0f * 3.3f;
-    latest_ir_cm = ir_compute_cm(v_ir);
+    ir_volt = (float)raw / 4095.0f * 3.3f;
 }
 
 void __attribute__((__interrupt__, no_auto_psv)) _AD2Interrupt(void) {
     IFS1bits.AD2IF = 0;
     int raw = ADC2BUF0;
-    latest_batt_v = (float)raw / 4095.0f * 3.3f * 3.0f;
+    latest_batt_v = (float)raw / 1023.0f * 3.3f * 3.0f;
 }
 
 
@@ -108,15 +95,18 @@ void __attribute__((__interrupt__, no_auto_psv)) _AD2Interrupt(void) {
 
 int main(void) {
     
+    // Pwm variables
     int linear_rate = 0;
     int yaw_rate = 0;
-    unsigned int count_led = 0;
-    char rx_byte; 
-    int count_battery = 0; 
-    int count_ir = 0;
-    unsigned int count_acc_read = 0;
+    char rx_byte;
+    unsigned int ir_cm = 0;
 
-    //int count_speed = 0;
+    // Count variables for different functionalities
+    unsigned int count_led = 0;
+    unsigned int count_battery = 0; 
+    unsigned int count_ir = 17;
+    unsigned int count_acc_read = 34;
+    unsigned int count_emergency = 0;
 
     // Initialize circular buffers
     Buffer_Init(&rxBuffer, rx_buffer_array, RX_BUFFER_SIZE);        // Initialize RX buffer
@@ -135,7 +125,6 @@ int main(void) {
     set_digital_mode();
 
     // Set up ADC
-    //ANSELBbits.ANSB14 = 1;
     TRISBbits.TRISB9 = 0; //output PIN A3-->RST1 to activate EN on sensor
     LATBbits.LATB9 = 1;
     ANSELBbits.ANSB14 = 1; //set pin AN1 == RB15 in anolog mode;
@@ -150,7 +139,8 @@ int main(void) {
     oc_pins_init();
     oc_start();
     adc1_init(); 
-    adc2_init();  
+    adc2_init(); 
+    acc_init(); 
     
     // Setup interrupts
     // global_interrupt_enable();       // BOH 
@@ -184,102 +174,110 @@ int main(void) {
                     linear_rate = extract_integer(ps.msg_payload); 
                     int idx = next_value(ps.msg_payload, 0);
                     yaw_rate = extract_integer(ps.msg_payload + idx);  
+                } else if (strcmp(ps.msg_type, "PCSTP") == 0) {
+                    if (STATE == EMERGENCY) {
+                        uart_send_string(&txBuffer, "$MACK,0*");
+                    } else {
+                        STATE = WAIT_FOR_START;
+                        uart_send_string(&txBuffer, "$MACK,1*");
+                    }    
+                } else if (strcmp(ps.msg_type, "PCSTT") == 0) {
+                    if (STATE == EMERGENCY) {
+                        uart_send_string(&txBuffer, "$MACK,0*");
+                    } else {
+                        STATE = MOVING;
+                        uart_send_string(&txBuffer, "$MACK,1*");
+                    } 
                 }
             }
             
         }
 
+
+        // We perform the following computation in the main to avoid making the ISR of the ADC1 longer
+        ir_cm = ir_compute_distance(ir_volt);
+
+        if (ir_cm < DISTANCE_THRESHOLD) {
+            // If we go under the threshold, change the state to EMERGENCY and send feedback on the UART (only once)
+            if (STATE != EMERGENCY) {
+                STATE = EMERGENCY;
+                uart_send_string(&txBuffer, "$MEMRG,1*\n");
+            }
+            // We reset the counter EVERY time we go under the threshold
+            count_emergency = 0;
+        } else if (STATE == EMERGENCY && ++count_emergency >= 2500) { 
+            // Resume from emergency when 5 seconds (2500 cycles) without going under the threshold have passed
+            // Only increment if we’re already in EMERGENCY. (&& operator is short-circuiting).
+            // This prevents count_emergency from growing indefinitely when the sensor stays far away.
+            STATE = WAIT_FOR_START;
+            uart_send_string(&txBuffer, "$MEMRG,0*\n");
+        }
+
+        
         switch (STATE) {
             case WAIT_FOR_START:
                 set_motor_speeds(0, 0);
-                LED2 = 0; 
+                LED2 = 0;               ////// DEBUG //////
                 break;
             case MOVING:
                 set_motor_speeds(linear_rate, yaw_rate);
-                LED2 = 1;
+                LED2 = 1;               ////// DEBUG //////
                 break;
             case EMERGENCY:
+                set_motor_speeds(0, 0);
+                LED2 = 0;               ////// DEBUG //////
                 break;
         }
-
 
 
         if (++count_acc_read % 10 == 0) {
             acc_update_readings(&accBuffer);
-            if (count_acc_read == 50) {
+            if (count_acc_read >= 50) {
                 count_acc_read = 0;
                 int avg_x, avg_y, avg_z;
                 DataBuffer_Average(&accBuffer, &avg_x, &avg_y, &avg_z);  
 
-                // Conversione in m/s^2
-                float ax = avg_x * 0.00961;
-                float ay = avg_y * 0.00961;
-                float az = avg_z * 0.00961;
-
-                char msg[50];
-                sprintf(msg, "$MACC,%.2f,%.2f,%.2f*\n", ax, ay, az);
+                char msg[32];
+                sprintf(msg, "$MACC,%d,%d,%d*\n", avg_x, avg_y, avg_z);
                 uart_send_string(&txBuffer, msg);
             }
         }
 
+        // Handle the feedback of the battery reading at 1 Hz
+        if (++count_battery >= 500) {  
+            count_battery = 0;
+            char msg[16];
+            sprintf(msg, "$MBATT,%.2f*\n", latest_batt_v);
+            uart_send_string(&txBuffer, msg);
+        }
 
-
-
-          
-
-
-
-
-
-
+        // Handle the manual triggering of the sampling (still at 1 Hz but offset to make sure that ...
+        // ...there is enough time between the start of the sampling and the feedback
+        if (count_battery == 250) { 
+            adc2_start_sampling();
+        }
+        
+        // Handle IR distance feedback on the UART at 10 Hz
+        if (++count_ir >= 50) {  
+            count_ir = 0;
+            char msg[16];
+            sprintf(msg, "$MDIST,%d*\n", ir_cm);
+            uart_send_string(&txBuffer, msg);
+        }
+        
         // Handle LED1 blinking at 1 Hz
         if (++count_led >= 250) {
             count_led = 0;
             LED1 = !LED1;
+            if (STATE == EMERGENCY) {
+                LEDL = !LEDL;
+                LEDR = !LEDR;
+            }
         }
-
-        
-        
-        if (count_battery == 250) {
-            char msg[50];
-            sprintf(msg, "Battery: %.2f V\n", latest_batt_v);
-            uart_send_string(&txBuffer, msg);
-        }
-
-        if (++count_battery >= 500) {  
-            count_battery = 0;
-            adc2_start_sampling();
-        }
-
-        if (++count_ir >= 50) {  
-            count_ir = 0;
-            char msg[50];
-            sprintf(msg, "IR: %.2f cm\n", latest_ir_cm);
-            uart_send_string(&txBuffer, msg);
-        }
-
-        // if (++count_speed >= 500) {
-        //     count_speed = 0;
-        //     char msg[50];
-        //     sprintf(msg, "Speed: %u\n", motor);
-        //     uart_send_string(&txBuffer, msg);
-        // }
-        
-        
-        
-
-
 
         // Wait until next period
-        if (tmr_wait_period(TIMER3) == 1) {   
-            // missed deadline
-            LEDFRONT = 1;                    
-        }
-        else {                             
-            LEDFRONT = 0;                       
-        }
-
+        if (tmr_wait_period(TIMER3) == 1) LEDFRONT = 1;              
+        else LEDFRONT = 0;                       
     }
-
     return 0;
 }

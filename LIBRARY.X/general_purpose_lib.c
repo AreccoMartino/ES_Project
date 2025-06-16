@@ -151,10 +151,10 @@ void mag_update_readings(DataBuffer* mb) {
     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
 }
 
-void acc_mode_filtered(){
+void acc_init(){
     // This function set the acc. sensor in filtered mode with 31.25Hz bandwidth (a sample every 16ms)
     CS_ACC = 0;
-    spi_write_address(0x10, 0b00001010);
+    spi_write_address(0x10, 0b00001100);
     CS_ACC = 1;
 }
 
@@ -172,74 +172,10 @@ void acc_read_axes(int* axes_ptr) {
 }
 
 void acc_update_readings(DataBuffer* mb) {
-    // This function calls mag_read_axes(), and then adds the new readings into the averaging buffer.
+    // This function calls acc_read_axes(), and then adds the new readings into the averaging buffer.
     int raw_axes[3];
     // Read raw axes
     acc_read_axes(raw_axes);  
     // Update MagDataBuffer pointed to by mb with the new measurements
     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
 }
-
-
-
-
-
-
-
-// void move_forward(void) {
-//     oc1_set_duty(0);
-//     oc2_set_duty(100);
-//     oc3_set_duty(0);
-//     oc4_set_duty(100);
-// }
-
-// void move_backward(void) {
-//     oc1_set_duty(100);
-//     oc2_set_duty(0);
-//     oc3_set_duty(100);
-//     oc4_set_duty(0);
-// }
-
-// void rotate_right(void) {
-//     oc1_set_duty(0);
-//     oc2_set_duty(100);
-//     oc3_set_duty(100);
-//     oc4_set_duty(0);
-// }
-
-// void rotate_left(void) {
-//     oc1_set_duty(100);
-//     oc2_set_duty(0);
-//     oc3_set_duty(0);
-//     oc4_set_duty(100);
-// }
-
-// void turn_right_forward(void) {
-//     oc1_set_duty(0);
-//     oc2_set_duty(100);
-//     oc3_set_duty(0);
-//     oc4_set_duty(70);
-// }
-
-// void turn_left_forward(void) {
-//     oc1_set_duty(0);
-//     oc2_set_duty(70);
-//     oc3_set_duty(0);
-//     oc4_set_duty(100);
-// }
-
-// void turn_right_backward(void) {
-//     oc1_set_duty(100);
-//     oc2_set_duty(0);
-//     oc3_set_duty(70);
-//     oc4_set_duty(0);
-// }
-
-// void turn_left_backward(void) {
-//     oc1_set_duty(70);
-//     oc2_set_duty(0);
-//     oc3_set_duty(100);
-//     oc4_set_duty(0);
-// }
-
-

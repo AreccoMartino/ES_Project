@@ -99,24 +99,18 @@ void algorithm(void);
 void mag_sus2act(void);
 void mag_read_axes(int* axes_ptr);
 void mag_update_readings(DataBuffer* mb);
+void acc_init();
 void acc_read_axes(int* axes_ptr);
 void acc_update_readings(DataBuffer* mb);
-// void move_forward(void);
-// void move_backward(void);
-// void rotate_right(void);
-// void rotate_left(void);
-// void turn_right_forward(void);
-// void turn_left_forward(void);
-// void turn_right_backward(void);
-// void turn_left_backward(void);
 
-
-static inline float ir_compute_cm(float v_ir) {
-    return 2.34f
-         - 4.74f  * v_ir
-         + 4.06f  * v_ir * v_ir
-         - 1.60f  * v_ir * v_ir * v_ir
-         + 0.24f  * v_ir * v_ir * v_ir * v_ir;
+static inline int ir_compute_distance(float v_ir) {
+    // To make sure we return centimeters and not meters we already multiplied all the coefficients by 100
+    float distance = 234.0f
+                   - 474.0f * v_ir
+                   + 406.0f * v_ir * v_ir
+                   - 160.0f * v_ir * v_ir * v_ir
+                   + 24.0f * v_ir * v_ir * v_ir * v_ir;
+    return (int)distance;   // cast to int only after the computation is performed
 }
 
 #ifdef	__cplusplus
