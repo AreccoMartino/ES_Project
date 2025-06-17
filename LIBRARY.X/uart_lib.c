@@ -14,7 +14,7 @@ void uart_init() {
     U1MODEbits.STSEL = 0;               // 1 stop bit
     
     // Set baud rate to UART_BAUD_RATE(9600 bps)
-    // Because of truncation, we get an actual baud rate of circa 9615.38 bps
+    // Because of truncation, we get an actual baud rate of circa 9615.38ï¿½bps
     // This is a 0.16% error, and UART usually has a 2% tolerance, so we're good
     U1BRG = (unsigned int) ((FCY / (16UL * UART_BAUD_RATE)) - 1);
     

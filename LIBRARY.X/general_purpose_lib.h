@@ -35,6 +35,7 @@
 
 // TODO Insert appropriate #include <>
 #include <stdlib.h>
+#include <string.h>
 #include "general_purpose_lib.h"
 #include "timer_lib.h"
 #include "spi_lib.h"
@@ -102,6 +103,11 @@ void mag_update_readings(DataBuffer* mb);
 void acc_init();
 void acc_read_axes(int* axes_ptr);
 void acc_update_readings(DataBuffer* mb);
+void ir_init(void);
+void battery_init(void);
+int itoa(int value, char* buffer);
+void format_msg_macc(char* buffer, int x, int y, int z);
+void format_msg_mdist(char* buffer, unsigned int distance);
 
 static inline int ir_compute_distance(float v_ir) {
     // To make sure we return centimeters and not meters we already multiplied all the coefficients by 100

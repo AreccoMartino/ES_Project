@@ -1,5 +1,6 @@
 #include <xc.h>
 #include <stdlib.h>
+#include <string.h>
 #include "general_purpose_lib.h"
 #include "timer_lib.h"
 #include "spi_lib.h"
@@ -129,8 +130,7 @@ void mag_sus2act(void) {
     CS_MAG = 1;
 }
 
-void mag_read_axes(int* axes_ptr) {
-    
+void mag_read_axes(int* axes_ptr) { 
     unsigned char raw_data[6]; // Buffer for raw data 
     // Read raw data
     CS_MAG = 0; 
@@ -154,12 +154,12 @@ void mag_update_readings(DataBuffer* mb) {
 void acc_init(){
     // This function set the acc. sensor in filtered mode with 31.25Hz bandwidth (a sample every 16ms)
     CS_ACC = 0;
-    spi_write_address(0x10, 0b00001100);
+    spi_write_address(0x10, 0b00001000);    // Set t_ut = 64 ms (15.625 Hz)
+    // This makes sure that the acc registers are updated faster than we read and send them on the uart
     CS_ACC = 1;
 }
 
 void acc_read_axes(int* axes_ptr) {
-    
     unsigned char raw_data[6]; // Buffer for raw data 
     // Read raw data
     CS_ACC = 0; 
@@ -178,4 +178,120 @@ void acc_update_readings(DataBuffer* mb) {
     acc_read_axes(raw_axes);  
     // Update MagDataBuffer pointed to by mb with the new measurements
     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
+}
+
+void ir_init() {
+    TRISBbits.TRISB9 = 0;       // Set as output
+    LATBbits.LATB9 = 1;         // Enable IR sensor
+    ANSELBbits.ANSB14 = 1;      // set pin AN1 == RB14 in analog mode;
+    TRISBbits.TRISB14 = 1;      // input
+}
+
+void battery_init() {
+    ANSELBbits.ANSB11 = 1;      // set pin AN1 == RB14 in analog mode;
+    TRISBbits.TRISB11 = 1;      // input
+}
+
+int itoa(int value, char* buffer) {
+    int i = 0;
+    int is_negative = 0;
+
+    // Handle the special case of 0 explicitly
+    if (value == 0) {
+        buffer[i++] = '0';
+        buffer[i] = '\0';
+        return 1;
+    }
+
+    // Handle negative numbers by setting a flag and making the value positive
+    if (value < 0) {
+        is_negative = 1;
+        // Be careful with INT_MIN, as -INT_MIN can overflow.
+        // For most microcontrollers where int is 16-bit, this is -32768.
+        // -(-32768) is 32768, which overflows a signed 16-bit int.
+        // On a 32-bit system, this is less likely to be an issue.
+        // A robust way is to work with unsigned, but for this context, simple negation is fine.
+        value = -value;
+    }
+
+    // Process individual digits. The digits are generated in reverse order.
+    // For example, 123 becomes '3', '2', '1'.
+    while (value != 0) {
+        int rem = value % 10;
+        buffer[i++] = rem + '0';
+        value = value / 10;
+    }
+
+    // If the number was negative, append the '-' sign to the end of the reversed string.
+    if (is_negative) {
+        buffer[i++] = '-';
+    }
+
+    // --- Inlined String Reversal Logic ---
+    // At this point, the buffer contains the digits (and sign) in reverse order.
+    // e.g., for -123, the buffer is ['3', '2', '1', '-'] and i = 4.
+    // We now reverse the string in place.
+    int start_idx = 0;
+    int end_idx = i - 1;
+    char temp;
+    while (start_idx < end_idx) {
+        // Swap characters
+        temp = buffer[start_idx];
+        buffer[start_idx] = buffer[end_idx];
+        buffer[end_idx] = temp;
+        
+        // Move pointers towards the middle
+        start_idx++;
+        end_idx--;
+    }
+    // --- End of Inlined Reversal ---
+
+    // Null-terminate the now-correctly-ordered string
+    buffer[i] = '\0'; 
+    
+    // Return the length of the string
+    return i; 
+}
+
+void format_msg_macc(char* buffer, int x, int y, int z) {
+    char* ptr = buffer;
+    int len;
+
+    // 1. Copy the prefix
+    strcpy(ptr, "$MACC,");
+    ptr += 6;
+
+    // 2. Convert and append X
+    len = itoa(x, ptr);
+    ptr += len;
+    *ptr++ = ',';
+
+    // 3. Convert and append Y
+    len = itoa(y, ptr);
+    ptr += len;
+    *ptr++ = ',';
+
+    // 4. Convert and append Z
+    len = itoa(z, ptr);
+    ptr += len;
+
+    // 5. Append the suffix and null terminator
+    *ptr++ = '*';
+    *ptr++ = '\n';
+    *ptr = '\0';
+}
+
+void format_msg_mdist(char* buffer, unsigned int distance) {
+    char* ptr = buffer;
+
+    // 1. Copy the prefix
+    strcpy(ptr, "$MDIST,");
+    ptr += 7; // Move pointer past the prefix
+
+    // 2. Convert the number and append it
+    int len = itoa(distance, ptr);
+    ptr += len; // Move pointer past the number
+
+    // 3. Append the suffix
+    strcpy(ptr, "*\n");
 }
