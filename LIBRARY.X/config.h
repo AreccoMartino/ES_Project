@@ -42,6 +42,7 @@
 // GENERAL
 #define FCY 72000000UL      // Instruction cycle frequency
 #define MAX_DELAY 233       // Max int value to not overflow 16-bit timer register
+#define DISTANCE_THRESHOLD 20
 
 // STATES
 #define WAIT_FOR_START 0
@@ -98,20 +99,15 @@
 #define LEDBRAKE LATGbits.LATG1
 #define LEDFRONT LATAbits.LATA7
 
-// ACCELEROMETER
-#define BUF_AVG_SAMPLES 5
+// // ACCELEROMETER
+// #define BUF_AVG_SAMPLES 5
 
 // PWM OC
-#define PWMA LATDbits.LATD1 
-#define PWMB LATDbits.LATD2
-#define PWMC LATDbits.LATD3 
-#define PWMD LATDbits.LATD4 
 #define PWM_FREQ 10000UL
 #define PWM_PERIOD_TICKS (FCY/PWM_FREQ)
 #define MIN_DUTY_CYCLE 40  
+#define PWM_SPAN (100 - MIN_DUTY_CYCLE)
 
-// GENERAL
-#define DISTANCE_THRESHOLD 20
 
 
 

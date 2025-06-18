@@ -1,4 +1,5 @@
 #include <xc.h>
+#include "config.h"
 #include "timer_lib.h"
 
 

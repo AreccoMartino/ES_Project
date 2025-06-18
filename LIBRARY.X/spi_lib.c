@@ -1,4 +1,5 @@
 #include <xc.h>
+#include "config.h"
 #include "spi_lib.h"
 
 
@@ -21,7 +22,7 @@ void spi_init() {
     CS_GYR = 1;                         // Disable gyroscope
     CS_MAG = 1;                         // Disable magnetometer
     
-    // Configure SPI module to run at FCY/12 = 6 MHz (which is less than the max mag frequency = 7.5 MHz)
+    // Configure SPI module to run at FCY/12 = 6 MHz (which is less than the max imu frequency = 7.5 MHz)
     SPI1CON1bits.MSTEN = 1;             // Enable master mode
     SPI1CON1bits.MODE16 = 0;            // 8-bit mode
     SPI1CON1bits.PPRE = 0b10;           // Primary prescaler: 4:1         
@@ -36,6 +37,8 @@ void spi_init() {
 
 
 unsigned int spi_write(unsigned int data) {
+    // This function writes data to the SPI bus and returns the data received on the MISO line.
+    
     // Write data to the MOSI line
     while (SPI1STATbits.SPITBF == 1);
     SPI1BUF = data;

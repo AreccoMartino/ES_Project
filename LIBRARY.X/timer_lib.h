@@ -34,7 +34,6 @@
 #include <xc.h> // include processor files - each processor file is guarded.
 
 // TODO Insert appropriate #include <>
-#include "config.h"
 
 // TODO Insert C++ class definitions if appropriate
 

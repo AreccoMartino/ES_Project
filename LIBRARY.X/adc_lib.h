@@ -34,7 +34,6 @@
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 // TODO Insert appropriate #include <>
-#include "config.h"
 
 // TODO Insert C++ class definitions if appropriate
 
@@ -42,6 +41,10 @@
 
 void adc1_init(void);
 void adc2_init(void);
+int adc1_read(void);
+int adc2_read(void);
+float adc1_process(int reading);
+float adc2_process(int reading);
 
 // We use this function to manually trigger the start of the sampling of the IR sensor
 static inline void adc1_start_sampling(void) {

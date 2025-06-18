@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdlib.h": "c",
+        "timer_lib.h": "c",
+        "pwm_lib.h": "c",
+        "general_purpose_lib.h": "c"
+    }
+}

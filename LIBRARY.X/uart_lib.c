@@ -1,4 +1,5 @@
 #include <xc.h>
+#include "config.h"
 #include "uart_lib.h"
 #include "general_purpose_lib.h"
 
