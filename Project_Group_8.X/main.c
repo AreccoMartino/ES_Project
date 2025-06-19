@@ -22,7 +22,7 @@ volatile CircularBuffer txBuffer;
 
 
 
-void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) { 
+void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {     
     IFS0bits.U1RXIF = 0;                // Clear interrupt flag
     // Read bytes from FIFO until they're available. If by any chance we had more than ...
     // ... one byte in the FIFO this allows to read them all and avoid the risk ...
@@ -38,7 +38,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {
     }
 }
 
-void __attribute__((__interrupt__, no_auto_psv)) _U1TXInterrupt(void) {   
+void __attribute__((__interrupt__, no_auto_psv)) _U1TXInterrupt(void) {    
     IFS0bits.U1TXIF = 0;
     char byte;
     while (!U1STAbits.UTXBF) {
@@ -98,6 +98,7 @@ int main(void) {
 
     // Initialize peripherals
     set_digital_mode();             // Set all pins to digital mode
+    set_interrupt_priorities();     // Set the priority for each of the ISRs
     leds_init();                    // Set all LED pins to output mode
     lights_init();                  // Set all light pins to output mode
     button1_init();                 // Initialize button1 and map to INT1
@@ -121,9 +122,9 @@ int main(void) {
     tmr_setup_period(TIMER1, 2);           
 
     while (1) {
-        // If button1 is pressed, toggle the state
-        if (button1_pressed) {
-            button1_pressed = 0;  // Reset the button press flag
+        // This flag is only ever set in the ISR and cleared in the main, so we shouldn't need to protect it with a critical section
+        if (button1_pressed) {              // If button1 is pressed, toggle the state
+            button1_pressed = 0;            // Reset the button press flag
             if (STATE == WAIT_FOR_START) {
                 STATE = MOVING;   
             } else if (STATE == MOVING) {
@@ -242,18 +243,19 @@ int main(void) {
         
         switch (STATE) {
             case WAIT_FOR_START:
-                // set_motor_speeds(0, 0);
-                set_motor_speeds_no_deadzone(0, 0);  
+                set_motor_speeds(0, 0);
+                // NOTE: The set_motor_speeds_no_deadzone() can be optionally used instead of set_motor_speeds() to avoid the deadzone under 40% duty cycle
+                // set_motor_speeds_no_deadzone(0, 0);  
                 LED2 = 0;               ////// DEBUG //////
                 break;
             case MOVING:
-                // set_motor_speeds(linear_rate, yaw_rate);
-                set_motor_speeds_no_deadzone(linear_rate, yaw_rate);
+                set_motor_speeds(linear_rate, yaw_rate);
+                // set_motor_speeds_no_deadzone(linear_rate, yaw_rate);
                 LED2 = 1;               ////// DEBUG //////
                 break;
             case EMERGENCY:
-                // set_motor_speeds(0, 0);
-                set_motor_speeds_no_deadzone(0, 0);
+                set_motor_speeds(0, 0);
+                // set_motor_speeds_no_deadzone(0, 0);
                 LED2 = 0;               ////// DEBUG //////
                 break;
         }

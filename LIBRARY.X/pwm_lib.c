@@ -1,5 +1,5 @@
 #include <xc.h>
-#include <stdlib.h>             // For abs()
+#include <stdlib.h>                 // For abs()
 #include "config.h"
 #include "pwm_lib.h"
 
@@ -122,8 +122,7 @@ void set_motor_speeds(int speed, int yawrate) {
 
 void set_motor_speeds_no_deadzone(int speed, int yawrate) {
     // While not strictly necessary for the purpose of the project, this function allows to mostly avoid the ...
-    // dead-zone of the motor driver ...
-    // ... by mapping the speed and yawrate values to the range [MIN_DUTY_CYCLE..100] instead of [0..100].
+    // dead-zone of the motor driver by mapping the speed and yawrate values to the range [MIN_DUTY_CYCLE..100] instead of [0..100].
     int l_power, r_power;
     unsigned int l_duty, r_duty;
 
@@ -151,26 +150,20 @@ void set_motor_speeds_no_deadzone(int speed, int yawrate) {
     unsigned int abs_r_power = (unsigned int)abs(r_power);
     unsigned int max_abs_power = abs_l_power > abs_r_power ? abs_l_power : abs_r_power;
 
-    // Map 0-100 range into [MIN_DUTY_CYCLE..100] to skip driver dead-zone
-
-    if (max_abs_power > 100) {
-        // Normalize and remap into [MIN_DUTY_CYCLE, 100]
+    if (max_abs_power > 100) {          // Map [1...max_abs_power] range into [MIN_DUTY_CYCLE..100]  
         if (abs_l_power > 0)
             l_duty = MIN_DUTY_CYCLE + (abs_l_power * PWM_SPAN) / max_abs_power;
         else
             l_duty = 0;
-
         if (abs_r_power > 0)
             r_duty = MIN_DUTY_CYCLE + (abs_r_power * PWM_SPAN) / max_abs_power;
         else
             r_duty = 0;
-    } else {
-        // For smaller values, ramp [1..100] -> [MIN_DUTY_CYCLE..100], keep 0 at 0
+    } else {                            // Map [1...100] range into [MIN_DUTY_CYCLE..100]
         if (abs_l_power > 0)
             l_duty = MIN_DUTY_CYCLE + (abs_l_power * PWM_SPAN) / 100;
         else
             l_duty = 0;
-
         if (abs_r_power > 0)
             r_duty = MIN_DUTY_CYCLE + (abs_r_power * PWM_SPAN) / 100;
         else

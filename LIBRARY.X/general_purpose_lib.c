@@ -78,6 +78,13 @@ void set_digital_mode(void) {
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0;
 }
 
+void set_interrupt_priorities(void) {
+    IPC2bits.U1RXIP = 6;        // Set UART1 RX interrupt priority to 6
+    IPC3bits.U1TXIP = 4;        // Set UART1 TX interrupt priority to 4 (default)
+    IPC5bits.INT1IP = 5;        // Set INT1 interrupt priority to 5
+    IPC1bits.T2IP = 5;          // Set TIMER2 interrupt priority to 5
+}
+
 void leds_init(void) {
     // Set output mode for the LED1/2 pins
     TRISAbits.TRISA0 = 0;
@@ -112,6 +119,7 @@ void global_interrupt_enable(void) {
 }
 
 void ir_init() {
+    // NOTE: we used Mikrobus 2 as Mikrobus 1 was broken on our car (number 8)
     TRISBbits.TRISB9 = 0;       // Set as output
     LATBbits.LATB9 = 1;         // Enable IR sensor
     ANSELBbits.ANSB14 = 1;      // set pin AN1 == RB14 in analog mode;

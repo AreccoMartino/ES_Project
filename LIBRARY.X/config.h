@@ -62,23 +62,32 @@
 
 // UART
 #define UART_BAUD_RATE 9600
+// Periodic messages:
+// - $MACC,x,y,z*\n = 28 bytes every 100 ms             // x,y,z are signed ints (6 characters at most)
+// - $MDIST,distance*\n = 12 bytes every 100 ms         // the biggest possible value of distance is 234, so in the worst case 3 characters are sufficient
+// - $MBATT,v_batt*\n = 13 bytes every 1000 ms          // v_batt is always 4 bytes (X.YZ)  
+// Sporadic messages:
+// - $MEMRG,1*\n = 10 bytes with a minimum inter-arrival time of 5 s   
+// - $MEMRG,0*\n = 10 bytes with a minimum inter-arrival time of 5 s      
+// - $MACK,0*\n / $MACK,1*\n = 9 bytes triggered as a response to $PCSTT* or $PCSTP* commands. If the user where ...
+// ... to send those commands as fast as possible we would get a new message every 7 ms, but this is unrealistic and ...
+// ... would raise a lot the needed baud rate. Therefore, we have assumed that the PC sends those commands every 100 ms.
+// Average production rate: 28*10 + 12*10 + 13*1 + 10/5 + 10/5 + 9*10 = 507 bytes/s 
+// Consumption rate at 9600 bps: about 960 bytes/s, so the baud rate is sufficient.
 #define RX_BUFFER_SIZE 4
 // Because at 9600 bps we need about 1 ms to receive 1 byte, and considering that ...
 // the main loop empties the buffer every 2 ms, in the worst case up to 2 bytes ...
 // ... could accumulate. A 4 byte rxBuffer should be sufficient and not overflow
-#define TX_BUFFER_SIZE 64
-// Because x, y, z and angle_north are signed ints, they can be represented with 6 ...
-// ... (5+1 for the sign) characters. Therefore, in the worst case we have:
-// - $MACC,x,y,z*\n = 28 bytes every 100 ms             // x,y,z are signed ints
-// - $MDIST,distance*\n = 14 bytes every 100 ms         // distance is unsigned int
-// - $MBATT,v_batt*\n = 13 bytes every 1000 ms          // v_batt is always 4 bytes (X.YZ)  
-
-
-// In total we have 48 bytes to transmit every 200 ms (assuming no more than 1 error ...
-// ... message every 200 ms is needed). At 9600 bps, a byte requires about 1 ms, ...
-// ... so the 48 bytes should take no more than 50 ms to fully transmit. Therefore, ...
-// ... a 64 byte txBuffer should suffice and never overflow, unless we trigger more ...
-// ... error or missed bytes messages than we assumed
+#define TX_BUFFER_SIZE 128
+// The periodic messages are scheduled with offsets, spreading the load between cycles. However, to ...
+// ... size the buffer properly, we analyze a conservative worst-case scenario where all the ... 
+// ... message types (both periodic and sporadic) are added to the buffer within a single cycle.
+// We assume one instance of each periodic message, one MACK message, and both MEMRG messages, as an ... 
+// ... emergency may end and be immediately re-triggered.
+// In this scenario we would have: 28 + 12 + 13 + 9 + 10 + 10 = 82 bytes.
+// No new messages will be queued before the next 100 ms, and at 960 byte/s we are guaranteed to have an ... 
+// ... empty buffer by then. Therefore, we size the buffer for the maximum burst of 82 bytes, ... 
+// ... choosing 128 bytes to be conservative and prevent overflow.
 
 //SPI
 #define CS_ACC LATBbits.LATB3            
@@ -107,8 +116,6 @@
 #define PWM_PERIOD_TICKS (FCY/PWM_FREQ)
 #define MIN_DUTY_CYCLE 40  
 #define PWM_SPAN (100 - MIN_DUTY_CYCLE)
-
-
 
 
 // Comment a function and leverage automatic documentation with slash star star

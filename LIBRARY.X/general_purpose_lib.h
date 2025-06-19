@@ -85,6 +85,7 @@ int Buffer_Read(volatile CircularBuffer* cb, char* data_ptr);
 // void DataBuffer_Write(DataBuffer* mb, int x, int y, int z);
 // void DataBuffer_Average(DataBuffer* mb, int* avg_x, int* avg_y, int* avg_z);
 void set_digital_mode(void);
+void set_interrupt_priorities(void);
 void leds_init(void);
 void lights_init(void);
 void button1_init(void);
