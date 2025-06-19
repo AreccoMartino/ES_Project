@@ -13,8 +13,7 @@
 
 
 volatile int button1_pressed = 0; 
-// unsigned int missed_rx_bytes = 0;
-// unsigned int missed_tx_bytes = 0;
+volatile unsigned int missed_rx_bytes = 0;
 volatile char rx_buffer_array[RX_BUFFER_SIZE];
 volatile CircularBuffer rxBuffer;
 volatile char tx_buffer_array[TX_BUFFER_SIZE];
@@ -32,7 +31,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _U1RXInterrupt(void) {
         if (Buffer_Write(&rxBuffer, received_byte) == -1) {
             // If the rxBuffer is full, the received_byte is lost, so we could ...
             // ... increase a counter to keep track of how many bytes we lost
-            // missed_rx_bytes ++;
+            missed_rx_bytes ++;
         }
         // As soon as there is no more data available in the FIFO we exit the loop and the ISR
     }
@@ -79,6 +78,7 @@ int main(void) {
     int STATE = WAIT_FOR_START;
     unsigned int count = 0;
     unsigned int count_emergency = 0;
+    unsigned int missed_tx_bytes = 0;       // This is not touched by ISRs so we can keep it local to the main
     int linear_rate = 0;
     int yaw_rate = 0;
     int ir_cm = 0;
@@ -156,18 +156,22 @@ int main(void) {
                     yaw_rate = extract_integer(ps.msg_payload + idx);  
                 } else if (strcmp(ps.msg_type, "PCSTP") == 0) {
                     if (STATE == EMERGENCY) {
-                        uart_send_string(&txBuffer, "$MACK,0*\n");
+                        missed_tx_bytes += uart_send_string(&txBuffer, "$MACK,0*\n");
                     } else {
                         STATE = WAIT_FOR_START;
-                        uart_send_string(&txBuffer, "$MACK,1*\n");
+                        missed_tx_bytes += uart_send_string(&txBuffer, "$MACK,1*\n");
                     }    
                 } else if (strcmp(ps.msg_type, "PCSTT") == 0) {
                     if (STATE == EMERGENCY) {
-                        uart_send_string(&txBuffer, "$MACK,0*\n");
+                        missed_tx_bytes += uart_send_string(&txBuffer, "$MACK,0*\n");
                     } else {
                         STATE = MOVING;
-                        uart_send_string(&txBuffer, "$MACK,1*\n");
+                        missed_tx_bytes += uart_send_string(&txBuffer, "$MACK,1*\n");
                     } 
+                } else if (strcmp(ps.msg_type, "MISS") == 0) {
+                    char msg[32];
+                    format_msg_miss(msg, missed_rx_bytes, missed_tx_bytes);
+                    missed_tx_bytes += uart_send_string(&txBuffer, msg);
                 }
             }    
         }
@@ -187,7 +191,7 @@ int main(void) {
             // If we go under the threshold, change the state to EMERGENCY and send feedback on the UART (only once)
             if (STATE != EMERGENCY) {
                 STATE = EMERGENCY;
-                uart_send_string(&txBuffer, "$MEMRG,1*\n");
+                missed_tx_bytes += uart_send_string(&txBuffer, "$MEMRG,1*\n");
             }
             // We reset the counter EVERY time we go under the threshold
             count_emergency = 0;
@@ -196,7 +200,7 @@ int main(void) {
             // count_emergency is only incremented if we’re already in EMERGENCY. (&& operator is short-circuiting).
             // This prevents count_emergency from growing indefinitely when the obstacle stays far away.
             STATE = WAIT_FOR_START;
-            uart_send_string(&txBuffer, "$MEMRG,0*\n");
+            missed_tx_bytes += uart_send_string(&txBuffer, "$MEMRG,0*\n");
             LEDL = 0;                       // Reset LEDs
             LEDR = 0;
         }
@@ -206,7 +210,7 @@ int main(void) {
             char msg[16];
             // We use our own function in place of sprintf because we were missing deadlines because of it
             format_msg_mdist(msg, ir_cm);
-            uart_send_string(&txBuffer, msg);
+            missed_tx_bytes += uart_send_string(&txBuffer, msg);
         }
 
         // Handle acc feedback on the UART at 10 Hz
@@ -216,7 +220,7 @@ int main(void) {
             char msg[32];
             // We use our own function in place of sprintf because we were missing deadlines because of it
             format_msg_macc(msg, raw_axes[0], raw_axes[1], raw_axes[2]);
-            uart_send_string(&txBuffer, msg);
+            missed_tx_bytes += uart_send_string(&txBuffer, msg);
         }
 
         // Handle the feedback of the battery reading at 1 Hz (once every 500 cycles)
@@ -229,7 +233,7 @@ int main(void) {
             // ... variables and we weren't missing deadlines anyway
             // Casting to double is necessary to avoid warning
             sprintf(msg, "$MBATT,%.2f*\n", (double)latest_batt_v);
-            uart_send_string(&txBuffer, msg);
+            missed_tx_bytes += uart_send_string(&txBuffer, msg);
         }
         
         // Handle LED1 blinking at 1 Hz (toggled at 2 Hz)

@@ -221,9 +221,7 @@ int itoa(int value, char* buffer) {
         u_value = value;
     }
 
-    // Process individual digits. The digits are generated in reverse order.
-    // For example, 123 becomes '3', '2', '1'.
-    // Process digits
+    // Process individual digits
     while (u_value != 0) {
         int rem = u_value % 10;     // Modulo operation by 10 extracts the last digit
         buffer[i++] = rem + '0';    // Convert digit to ASCII character ('0' is 48 in ASCII) and store it in buffer
@@ -288,6 +286,27 @@ void format_msg_mdist(char* buffer, unsigned int distance) {
     // Convert and append the distance value
     int len = itoa(distance, ptr);
     ptr += len;
+
+    // Append the end of the message
+    strcpy(ptr, "*\n");
+}
+
+void format_msg_miss(char* buffer, int rx, int tx) {
+    char* ptr = buffer;
+    int len;
+
+    // Append first part of the message
+    strcpy(ptr, "$MISS,");
+    ptr += 6;
+
+    // Convert and append the axes values separated by commas
+    len = itoa(rx, ptr);
+    ptr += len;
+    *ptr++ = ',';
+
+    len = itoa(tx, ptr);
+    ptr += len;
+    *ptr++ = ',';
 
     // Append the end of the message
     strcpy(ptr, "*\n");

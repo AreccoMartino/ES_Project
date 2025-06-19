@@ -87,7 +87,7 @@
 // In this scenario we would have: 28 + 12 + 13 + 9 + 10 + 10 = 82 bytes.
 // No new messages will be queued before the next 100 ms, and at 960 byte/s we are guaranteed to have an ... 
 // ... empty buffer by then. Therefore, we size the buffer for the maximum burst of 82 bytes, ... 
-// ... choosing 128 bytes to be conservative and prevent overflow.
+// ... choosing 128 bytes to be conservative and prevent overflow, assuming we don't exceed the 1 MACK message per 100 ms hypothesis.
 
 //SPI
 #define CS_ACC LATBbits.LATB3            

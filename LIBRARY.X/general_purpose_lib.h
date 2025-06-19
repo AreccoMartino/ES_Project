@@ -102,6 +102,7 @@ void acc_read_axes(int* axes_ptr);
 int itoa(int value, char* buffer);
 void format_msg_macc(char* buffer, int x, int y, int z);
 void format_msg_mdist(char* buffer, unsigned int distance);
+void format_msg_miss(char* buffer, int rx, int tx);
 
 static inline void button1_interrupt_enable(void) {
     // Enable the button1 interrupt
