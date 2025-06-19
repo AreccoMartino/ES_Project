@@ -122,7 +122,7 @@ void set_motor_speeds(int speed, int yawrate) {
 
 void set_motor_speeds_no_deadzone(int speed, int yawrate) {
     // While not strictly necessary for the purpose of the project, this function allows to mostly avoid the ...
-    // dead-zone of the motor driver by mapping the speed and yawrate values to the range [MIN_DUTY_CYCLE..100] instead of [0..100].
+    // ... dead-zone of the motor driver by mapping the speed and yawrate values to the range [MIN_DUTY_CYCLE..100] instead of [0..100].
     int l_power, r_power;
     unsigned int l_duty, r_duty;
 

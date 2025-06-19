@@ -40,39 +40,6 @@ int Buffer_Read(volatile CircularBuffer* cb, char* data_ptr) {
     return 0;
 }
 
-// void DataBuffer_Init(DataBuffer* mb) {
-//     mb->index = 0;
-//     mb->count = 0;
-//     for (int i = 0; i < BUF_AVG_SAMPLES; i++) {
-//         mb->x[i] = mb->y[i] = mb->z[i] = 0;
-//     }
-// }
-
-// void DataBuffer_Write(DataBuffer* mb, int x, int y, int z) {
-//     mb->x[mb->index] = x;
-//     mb->y[mb->index] = y;
-//     mb->z[mb->index] = z;
-//     mb->index = (mb->index + 1) % BUF_AVG_SAMPLES;
-//     if(mb->count < BUF_AVG_SAMPLES)
-//         mb->count++;
-// }
-
-// void DataBuffer_Average(DataBuffer* mb, int* avg_x, int* avg_y, int* avg_z) {
-//     long sum_x = 0, sum_y = 0, sum_z = 0;
-//     for (int i = 0; i < mb->count; i++) {
-//         sum_x += mb->x[i];
-//         sum_y += mb->y[i];
-//         sum_z += mb->z[i];
-//     }
-//     if(mb->count > 0) {
-//         *avg_x = (int)(sum_x / mb->count);
-//         *avg_y = (int)(sum_y / mb->count);
-//         *avg_z = (int)(sum_z / mb->count);
-//     } else {
-//         *avg_x = *avg_y = *avg_z = 0;
-//     }
-// }
-
 void set_digital_mode(void) {
     // Sets all analog pins to digital mode
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0;
@@ -107,11 +74,14 @@ void lights_init(void) {
     LEDFRONT = 0;
 }
 
-void button1_init(void) {
-    // Set input mode for the buttons
-    TRISEbits.TRISE8 = 1;   
-    // Associate INT1 functionality to RE8 (RP88=0x58)
-    RPINR0bits.INT1R = 0x58; 
+void button1_init(void) { 
+    TRISEbits.TRISE8 = 1;       // Set input mode for the buttons
+    RPINR0bits.INT1R = 0x58;    // Associate INT1 functionality to RE8 (RP88=0x58)
+}
+
+void button1_interrupt_enable(void) {
+    IFS1bits.INT1IF = 0;        // Clear INT1 interrupt flag 
+    IEC1bits.INT1IE = 1;        // Enable INT1 interrupt
 }
 
 void global_interrupt_enable(void) {
@@ -130,45 +100,6 @@ void battery_init() {
     ANSELBbits.ANSB11 = 1;      // set pin AN1 == RB14 in analog mode;
     TRISBbits.TRISB11 = 1;      // input
 }
-
-// void algorithm (void) {
-//     // Simulates an algorithm which takes 7 ms to execute
-//         tmr_wait_ms(TIMER2, 7);
-// }
-
-// void mag_sus2act(void) {
-//     // This function switches the magnetometer from suspended to active mode
-//     CS_MAG = 0;
-//     spi_write_address(0x4B, 0x01);      // Switch from suspended to sleep mode
-//     CS_MAG = 1;
-    
-//     tmr_wait_ms(TIMER3, 3);             // Wait 3 ms for the switch to take place
-    
-//     CS_MAG = 0;
-//     spi_write_address(0x4C, 0b00110000);// Switch from sleep to active mode and set 25 Hz data rate
-//     CS_MAG = 1;
-// }
-
-// void mag_read_axes(int* axes_ptr) { 
-//     unsigned char raw_data[6]; // Buffer for raw data 
-//     // Read raw data
-//     CS_MAG = 0; 
-//     spi_read_address(0x42, raw_data, 6);
-//     CS_MAG = 1; 
-
-//     axes_ptr[0] = (int)(((int)raw_data[1] << 8) | (raw_data[0] & 0b11111000)) / 8;
-//     axes_ptr[1] = (int)(((int)raw_data[3] << 8) | (raw_data[2] & 0b11111000)) / 8;
-//     axes_ptr[2] = (int)(((int)raw_data[5] << 8) | (raw_data[4] & 0b11111110)) / 2;
-// }
-
-// void mag_update_readings(DataBuffer* mb) {
-//     // This function calls mag_read_axes(), and then adds the new readings into the averaging buffer.
-//     int raw_axes[3];
-//     // Read raw axes
-//     mag_read_axes(raw_axes);  
-//     // Update MagDataBuffer pointed to by mb with the new measurements
-//     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
-// }
 
 void acc_init(){
     // This function set the acc. sensor in filtered mode with 7.81 bandwidth (15.625 Hz update frequency)
@@ -189,15 +120,6 @@ void acc_read_axes(int* axes_ptr) {
     axes_ptr[1] = (int)(((int)raw_data[3] << 8) | (raw_data[2] & 0b11110000)) / 16;
     axes_ptr[2] = (int)(((int)raw_data[5] << 8) | (raw_data[4] & 0b11110000)) / 16;     
 }
-
-// void acc_update_readings(DataBuffer* mb) {
-//     // This function calls acc_read_axes(), and then adds the new readings into the averaging buffer.
-//     int raw_axes[3];
-//     // Read raw axes
-//     acc_read_axes(raw_axes);  
-//     // Update MagDataBuffer pointed to by mb with the new measurements
-//     DataBuffer_Write(mb, raw_axes[0], raw_axes[1], raw_axes[2]);
-// }
 
 int itoa(int value, char* buffer) {
     // This function, while very common, is not available as a standard library in C, so we implement it here.

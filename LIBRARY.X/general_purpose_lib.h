@@ -81,34 +81,22 @@ typedef struct {
 int Buffer_Init(volatile CircularBuffer* cb, volatile char* buf_ptr, unsigned int size);
 int Buffer_Write(volatile CircularBuffer* cb, char data);
 int Buffer_Read(volatile CircularBuffer* cb, char* data_ptr);
-// void DataBuffer_Init(DataBuffer* mb);
-// void DataBuffer_Write(DataBuffer* mb, int x, int y, int z);
-// void DataBuffer_Average(DataBuffer* mb, int* avg_x, int* avg_y, int* avg_z);
 void set_digital_mode(void);
 void set_interrupt_priorities(void);
 void leds_init(void);
 void lights_init(void);
 void button1_init(void);
+void button1_interrupt_enable(void);
 void global_interrupt_enable(void);
 void ir_init(void);
 void battery_init(void);
-// void algorithm(void);
-// void mag_sus2act(void);
-// void mag_read_axes(int* axes_ptr);
-// void mag_update_readings(DataBuffer* mb);
 void acc_init();
 void acc_read_axes(int* axes_ptr);
-// void acc_update_readings(DataBuffer* mb);
 int itoa(int value, char* buffer);
 void format_msg_macc(char* buffer, int x, int y, int z);
 void format_msg_mdist(char* buffer, unsigned int distance);
 void format_msg_miss(char* buffer, int rx, int tx);
 
-static inline void button1_interrupt_enable(void) {
-    // Enable the button1 interrupt
-    IFS1bits.INT1IF = 0;        // Clear INT1 interrupt flag 
-    IEC1bits.INT1IE = 1;        // Enable INT1 interrupt
-}
 
 static inline int ir_compute_distance(float v_ir) {
     // To make sure we return centimeters and not meters we already multiplied all the coefficients by 100
@@ -119,6 +107,7 @@ static inline int ir_compute_distance(float v_ir) {
                    + 24.0f * v_ir * v_ir * v_ir * v_ir;
     return (int)distance;   // cast to int only after the computation is performed
 }
+
 
 #ifdef	__cplusplus
 extern "C" {
